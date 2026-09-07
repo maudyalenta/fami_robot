@@ -1,0 +1,322 @@
+//note 0 -> RX, 1 -> TX
+//bluetooth VCC - GND - TX - RX
+//kabel bluetooth merah - abu - oren - kuning
+
+#include <AFMotor.h>
+#include <Servo.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+int command;
+#define GOFORWARD 'F'
+#define GOBACKWARD 'B'
+#define LEFT 'L'
+#define RIGHT 'R'
+#define CIRCLE 'C'
+#define CROSS 'X'
+#define TRIANGLE 'T'
+#define SQUARE 'S'
+#define START 'A'
+#define PAUSE 'P'
+
+#define moisSensor A0 //sensor kelembapan tanah
+#define pumpWater 4
+
+AF_DCMotor motor_1(1);
+AF_DCMotor motor_2(2);
+AF_DCMotor motor_3(3);
+AF_DCMotor motor_4(4);
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+Servo servoSeed; //servo pin 10
+Servo servoMois; //servo pin 13
+Servo servoPump; //servo pin 8
+
+int posSeed = 0;
+int posPump = 0;
+int posMois = 0;
+
+void setup() {
+Serial.begin(9600);  //Set the baud rate to your Bluetooth module.
+
+//LCD setting
+lcd.begin();
+lcd.backlight();
+lcd.print("Welcome to ");
+for (byte i = 0; i < 15; i++)
+  {
+    lcd.setCursor(0,2);
+    lcd.print("Welcome to");
+    lcd.setCursor(15 - i, 1);
+    lcd.print("FAMY ROBOT      ");
+    delay(700);
+    
+  }
+
+//Servo setting
+servoSeed.attach(10); //seeding oren
+servoSeed.write(40);
+servoMois.attach(13); //mois hijau
+servoMois.write(160);
+servoPump.attach(8); //pump kuning
+servoPump.write(35);
+
+//Pump setting
+pinMode(pumpWater,OUTPUT);
+digitalWrite(pumpWater,HIGH);
+
+//Mois sensor
+pinMode(moisSensor,INPUT);
+
+//Car setting
+motor_1.setSpeed(200);
+motor_1.run(RELEASE);
+motor_2.setSpeed(200);
+motor_2.run(RELEASE);
+motor_3.setSpeed(200);
+motor_3.run(RELEASE);
+motor_4.setSpeed(200);
+motor_4.run(RELEASE);
+}
+
+//buat maju
+void forward() {
+  lcd.clear();
+  lcd.print("Forward");
+
+  motor_1.setSpeed(200);
+  motor_1.run(FORWARD);
+  motor_2.setSpeed(200);
+  motor_2.run(FORWARD);
+  motor_3.setSpeed(200);
+  motor_3.run(FORWARD);
+  motor_4.setSpeed(200);
+  motor_4.run(FORWARD);
+}
+
+//buat mundur
+void backward() {
+  lcd.clear();
+  lcd.print("Backward");
+
+  motor_1.setSpeed(200);
+  motor_1.run(BACKWARD);
+  motor_2.setSpeed(200);
+  motor_2.run(BACKWARD);
+  motor_3.setSpeed(200);
+  motor_3.run(BACKWARD);
+  motor_4.setSpeed(200);
+  motor_4.run(BACKWARD);
+}
+
+
+//buat belok kiri
+void turn_left() {
+  lcd.clear();
+  lcd.print("Turn Left");
+
+  motor_1.setSpeed(200);
+  motor_1.run(BACKWARD);
+  motor_2.setSpeed(200);
+  motor_2.run(BACKWARD); 
+  motor_3.setSpeed(200);
+  motor_3.run(FORWARD);
+  motor_4.setSpeed(200);
+  motor_4.run(FORWARD);
+}
+
+//buat belok kanan
+void turn_right() {
+  lcd.clear();
+  lcd.print("Turn Right");
+
+  motor_1.setSpeed(200);
+  motor_1.run(FORWARD);
+  motor_2.setSpeed(200);
+  motor_2.run(FORWARD);
+  motor_3.setSpeed(200);
+  motor_3.run(BACKWARD);
+  motor_4.setSpeed(200);
+  motor_4.run(BACKWARD); 
+}
+
+//buat stop
+void stop() {
+  motor_1.setSpeed(0);
+  motor_2.setSpeed(0);
+  motor_3.setSpeed(0);
+  motor_4.setSpeed(0);
+}
+
+//buat mode seed sowing
+void servo_seed() 
+{
+  for (posSeed = 40; posSeed >= 0; posSeed -= 5) 
+  {
+    servoSeed.write(posSeed);
+    delay(20);
+  }
+
+  for (posSeed = 0; posSeed <= 40; posSeed += 5) 
+  {
+    servoSeed.write(posSeed);
+    delay(20);
+  }
+}
+
+
+//buat mode water spraying
+void servo_pump() 
+{
+  for (posPump = 35; posPump >= 0; posPump -= 1) 
+    {
+      digitalWrite(pumpWater,LOW);
+      servoPump.write(posPump);
+      delay(30);
+    }
+  for (posPump = 0; posPump <= 90; posPump += 1) 
+    {
+        digitalWrite(pumpWater,LOW);
+        servoPump.write(posPump);
+        delay(30);
+    }
+  for (posPump = 90; posPump >= 35; posPump -= 1) 
+    {
+        digitalWrite(pumpWater,LOW);
+        servoPump.write(posPump);
+        delay(30);
+    }
+  digitalWrite(pumpWater,HIGH);
+}
+
+void servo_mois() 
+{
+  for (posMois = 160; posMois >= 90; posMois -= 2) { 
+    servoMois.write(posMois);              
+    delay(10);                       
+  }
+  delay(4000);
+  for (posMois = 90; posMois <= 160; posMois += 2) { 
+    servoMois.write(posMois);
+    delay(10);  
+    }       
+}
+
+void mois_sensor() 
+{
+  //servo gerak cekin tanah
+  servo_mois();
+
+  //pembacaan kondisi tanah
+  int moisRead = analogRead(moisSensor); //note: basah (tegangan output turun), kering (tegangan output naik)
+  Serial.println(moisRead);
+  delay(1000);
+
+  int percentage = (1- (moisRead/495)) * 100;
+
+  lcd.setCursor(0,0);
+  lcd.print("Kelembapan:");
+  lcd.setCursor(0,10);
+  lcd.print(percentage);
+  lcd.setCursor(0,13);
+  lcd.print("%");
+
+  if (moisRead > 300) //tanah kering
+  {
+    lcd.setCursor(1,0);
+    lcd.print("Status: Kering");
+    servo_pump();
+  }
+  else //tanah lembap
+  {
+    digitalWrite(pumpWater,HIGH);
+    lcd.setCursor(1,0);
+    lcd.print("Status: Lembap");
+  }
+}
+
+void loop()
+{
+  if (Serial.available()>0) 
+  {
+    char command = Serial.read();
+    Serial.println(command);
+    executeCommand1(command);
+  }
+  // else if (Serial.available()> 0 && P == true)
+  // {
+  //   char command = Serial.read();
+  //   executeCommand2(command);
+  // }
+
+}
+
+void executeCommand1(char command) 
+{
+  switch (command) 
+  {
+    case GOFORWARD:
+      lcd.clear();
+      lcd.print("Forward");
+      delay(20);
+      forward();
+      break;
+    case GOBACKWARD:
+      lcd.clear();
+      lcd.print("Backward");
+      delay(20);
+      backward();
+      break;
+    case LEFT:
+      lcd.clear();
+      lcd.print("Turn Left");
+      delay(20);
+      turn_left();
+      break;
+    case RIGHT:
+      lcd.clear();
+      lcd.print("Turn Right");
+      delay(20);
+      turn_right();
+      break;
+    case CIRCLE:
+      lcd.clear();
+      lcd.print("Seeding Mode");
+      delay(20);
+      servo_seed();
+      break;
+    case CROSS:
+      lcd.clear();
+      mois_sensor();
+    case TRIANGLE:
+      lcd.clear();
+      lcd.print("Spraying Mode");
+      servo_pump();
+    // case SQUARE:
+    //   lcd.clear();
+    //   lcd.setCursor(0,0);
+    //   lcd.print("Moisture ");
+    //   delay(1000);
+    //   lcd.setCursor(1,0);
+    //   lcd.print("Checking Mode");
+    //   delay(1000);
+    //   lcd.clear();
+      
+    default:
+      lcd.clear();
+      stop();
+  }
+}
+
+// void executeCommand2( char command)
+// {
+//   switch (command)
+//   {
+//     case START:
+//     A = true;
+
+//     default:
+//     break;
+//   }
+// }
